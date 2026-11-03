@@ -19,7 +19,7 @@ Version 1.1.3 fixes dark-mode inverter cards and adds **Save & test connection**
 ## Install and connect
 
 1. Open this folder in Android Studio and allow Gradle sync. This build uses SDK 35, Gradle 8.9 and Android Studio's bundled Java runtime.
-2. Enable USB debugging on your phone, connect a USB data cable, accept the debugging prompt on the phone, then Run the `app` configuration. Alternatively transfer `app/build/outputs/apk/debug/app-debug.apk` to your phone and install it yourself.
+2. Enable USB debugging on your phone, connect a USB data cable, accept the debugging prompt on the phone, then Run the `app` configuration. Alternatively, after packaging, transfer `dist/latest/Unofficial-Enphase-Monitor.apk` to your phone and install it yourself.
 3. Connect the phone to home Wi-Fi. In Settings, enter your gateway's local IPv4 address and serial, then inspect it. Confirm the serial and certificate fingerprint before pairing. New installs intentionally have no prefilled gateway details.
 4. Sign in to Enlighten **in your own browser**. Obtain an owner token for your own gateway from Enphase's Entrez token page. Paste only the token value in the app and save it. Never commit tokens or passwords to this project.
 5. Choose **Save & test connection** after pasting the token. The check starts immediately, bypassing the refresh wait, and shows Connected, Authentication error, or Connection unavailable. **Test saved token** checks existing credentials. Tests have a 45-second total timeout, and normal collection resumes with the configured interval/backoff after completion. The Dashboard defaults to a 60-second delay between checks. If you want low/high voltage alerts, save your own thresholds and allow notifications. Thresholds are initially disabled.
@@ -60,6 +60,14 @@ Tokens are AES-GCM encrypted with a key in Android Keystore, excluded from backu
 ## Build and verification
 
 Run `gradlew.bat testDebugUnitTest assembleDebug lintDebug` on Windows, or `./gradlew testDebugUnitTest assembleDebug lintDebug` elsewhere, using a Java 17+ Gradle runtime and SDK 35. Set your SDK location in your local, ignored `local.properties`.
+
+After building, run `./tools/Package-DebugBuild.ps1` in PowerShell. It verifies the APKs and keeps versioned copies in `dist/`, plus these stable filenames in `dist/latest/`:
+
+- `Unofficial-Enphase-Monitor.apk` — Android phone app.
+- `Unofficial-Enphase-Wear.apk` — Wear OS companion.
+- `Unofficial-Enphase-Face.apk` — solar watch face.
+
+`dist/latest/build-info.json` records the packaged versions and hashes, with checksums also in `SHA256SUMS.txt`. These are debug builds. Run packaging again after each build to update these copies. Gradle's original `app/build/outputs/apk/debug/app-debug.apk` remains its standard build output. The ignored `dist/` folder is local; APKs are not included in the GitHub source repository.
 
 Tests use synthetic device data (no access token or real gateway identifiers). They verify all nine devices, milli-unit/energy conversion, cached timestamps, single-phase channel selection, partially empty device records, matched-time home power and alert transitions.
 

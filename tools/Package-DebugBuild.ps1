@@ -41,12 +41,26 @@ $facePermissions = (& $aapt dump permissions $packages[2].Source) -join "`n"
 if ($facePermissions -match 'android.permission.INTERNET') { throw 'The face must not access the network' }
 $destination = Join-Path $taskRoot 'dist'
 New-Item -ItemType Directory -Force $destination | Out-Null
+$latest = Join-Path $destination 'latest'
+New-Item -ItemType Directory -Force $latest | Out-Null
 $hashes = @()
+$latestHashes = @()
+$latestPackages = @()
 foreach ($package in $packages) {
     $output = Join-Path $destination $package.Name
     Copy-Item -LiteralPath $package.Source -Destination $output -Force
-    $hashes += (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$package.Name
+    $hash = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hashes += $hash+'  '+$package.Name
+    $latestName = $package.Prefix+'.apk'
+    $latestOutput = Join-Path $latest $latestName
+    Copy-Item -LiteralPath $output -Destination $latestOutput -Force
+    if ((Get-FileHash -LiteralPath $latestOutput -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) { throw ('Latest copy does not match: '+$latestName) }
+    $latestHashes += $hash+'  '+$latestName
+    $latestPackages += [ordered]@{ file=$latestName; version=$package.Version; versionCode=$package.Code; sha256=$hash }
     Write-Output ('Packaged '+$package.Name+' ('+(Get-Item -LiteralPath $output).Length+' bytes)')
 }
 $hashes | Set-Content -LiteralPath (Join-Path $destination ('SHA256SUMS-'+$packages[0].Version+'.txt')) -Encoding utf8
+$latestHashes | Set-Content -LiteralPath (Join-Path $latest 'SHA256SUMS.txt') -Encoding utf8
+[ordered]@{ packagedAtUtc=[DateTime]::UtcNow.ToString('o'); buildType='debug'; packages=$latestPackages } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $latest 'build-info.json') -Encoding utf8
+Write-Output ('Latest named APK copies: '+$latest)
 Write-Output 'Package IDs, SDK levels, signatures, upgrade key and resource-only face verified.'
