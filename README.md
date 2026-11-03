@@ -2,6 +2,18 @@
 
 Unofficial Android and Wear OS monitor for compatible Enphase IQ Gateway / Envoy systems and IQ microinverters. Android 10+; Kotlin, Compose, Room. This independent project is not affiliated with, endorsed by, or supported by Enphase Energy. Enphase, Envoy, IQ and Enlighten are their respective owner's marks. No backend, Enphase password collection, or gateway configuration writes.
 
+## Tested setup and compatibility
+
+Development and user testing have used **one installation**: an **Envoy-S-Metered-EU** gateway (**ENV-S-WM-230**) with **nine IQ8P microinverters** (**IQ8P-72-2-INT**). Gateway firmware was originally reported as **D8.2.4265**. The supplied meter configuration has one active phase, with production and net-consumption metering. These are model details, not a gateway serial or site identifier.
+
+**Other gateway models, firmware versions, inverter models and three-phase installations are unverified.** Similar local APIs do not guarantee that every measurement or authentication flow works across all Enphase gateways. This project does not claim universal gateway support.
+
+The current connection flow requires HTTPS/token access, a compatible `/info` identity response and a readable `/ivp/meters` configuration. Voltage and meter power use `/ivp/meters/readings`; available measurements depend on the gateway's metering hardware and configuration. Grid import/export and calculated home consumption require compatible net-consumption metering. Gateways without the required meter configuration endpoint may fail to connect, even if they expose inverter power elsewhere.
+
+Detailed inverter measurements require compatible fields and permission to read `/ivp/pdm/device_data`. When those are unavailable, the app attempts `/api/v1/production/inverters` for power only. It cannot supply inverter voltage from that fallback. Older gateways/authentication methods and non-metered gateways have not been validated. Firmware changes can require app updates. If reporting compatibility, share the model, firmware and redacted response structure; remove tokens, serials and site/account identifiers.
+
+## App features
+
 Version 1.1 includes a Wear OS companion for the Galaxy Watch6 Classic and a separate Watch Face Format solar face. See [WATCH_SETUP.md](WATCH_SETUP.md) for installation, pairing and device checks. The phone keeps its existing history and encrypted settings when installed as an update.
 
 Phone Settings includes an icon-only **Appearance** selector: system, light and dark. The selection applies immediately and persists between launches. Tap an information icon on a card for its explanation.
