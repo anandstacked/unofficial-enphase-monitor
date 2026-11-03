@@ -11,8 +11,8 @@ android {
         applicationId = "com.anand.envoymonitor"
         minSdk = 29
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.1.13"
+        versionCode = 16
+        versionName = "1.1.14"
         testInstrumentationRunner = "com.anand.envoymonitor.ChartDatabaseInstrumentation"
     }
     buildFeatures { compose = true }

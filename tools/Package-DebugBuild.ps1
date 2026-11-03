@@ -28,7 +28,7 @@ foreach ($package in $packages) {
     if ($badging -notmatch ("sdkVersion:'"+$package.Min+"'") -or $badging -notmatch "targetSdkVersion:'35'") { throw ('Wrong SDK requirement: '+$package.Name) }
 }
 if (@($certificates | Select-Object -Unique).Count -ne 1) { throw 'Phone and watch signing certificates must match' }
-$previous = Join-Path $taskRoot 'dist/Envoy-Voltage-1.0.0.apk'
+$previous = Join-Path $taskRoot 'dist/latest/Unofficial-Enphase-Monitor.apk'
 if (Test-Path -LiteralPath $previous) {
     $old = & $signer verify --print-certs $previous
     if ($LASTEXITCODE -ne 0 -or @($old | Where-Object { $_ -match 'certificate SHA-256 digest:' })[0] -ne $certificates[0]) { throw 'Phone update must retain the previous signing certificate' }

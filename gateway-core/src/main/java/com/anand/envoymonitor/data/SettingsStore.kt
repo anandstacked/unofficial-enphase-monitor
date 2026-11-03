@@ -70,5 +70,4 @@ class SettingsStore(context: Context) {
         String(cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)), Charsets.UTF_8)
     }.getOrNull()
     fun hasToken() = token() != null
-    fun tokenExpiry(): Long? = tokenState.value.metadata?.expiresAt
 }

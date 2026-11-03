@@ -56,7 +56,6 @@ private val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurface
 private val Paper: Color @Composable get() = MaterialTheme.colorScheme.background
 private val Amber: Color @Composable get() = LocalMonitorAccents.current.warningText
 // Keep the provisioning UI available for a later fix without exposing a setup flow that currently fails.
-private const val SHOW_WATCH_SETUP = false
 private fun number(value: Double?, digits: Int = 1) = value?.let { "% .${digits}f".format(it).trim() } ?: "—"
 private fun date(timestamp: Long, pattern: String = "dd MMM · HH:mm") = if (timestamp <= 0) "No report" else
     DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.systemDefault()).format(Instant.ofEpochSecond(timestamp))
@@ -399,7 +398,6 @@ private fun showExportDateTimePicker(context: android.content.Context, initial: 
                 Switch(checked = state.background, onCheckedChange = toggleMonitor)
             }
         } }
-        if (SHOW_WATCH_SETUP) item { WatchSetupCard(app) }
     }
 }
 
