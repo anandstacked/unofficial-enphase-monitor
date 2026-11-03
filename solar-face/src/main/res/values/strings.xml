@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Unofficial Enphase Monitor</string>
+    <string name="voltage">Gateway voltage</string>
+    <string name="power">Solar power</string>
+    <string name="day_energy">Inverter reported day energy</string>
+    <string name="status">Reading source and age</string>
+</resources>

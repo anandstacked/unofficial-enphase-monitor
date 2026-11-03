@@ -1,0 +1,52 @@
+<WatchFace width="450" height="450" clipShape="CIRCLE">
+    <Metadata key="CLOCK_TYPE" value="DIGITAL" />
+    <Scene backgroundColor="#000000">
+        <PartText x="105" y="25" width="240" height="25">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="18" color="#8DE8CC">SOLAR MONITOR</Font></Text>
+        </PartText>
+        <DigitalClock x="60" y="56" width="330" height="83">
+            <TimeText x="0" y="0" width="330" height="83" format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="68" weight="MEDIUM" color="#FFFFFF" />
+            </TimeText>
+        </DigitalClock>
+        <PartText x="75" y="139" width="300" height="30">
+            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#AAB5BB">
+                <Template>%s, %s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
+            </Font></Text>
+        </PartText>
+        <PartText x="75" y="180" width="300" height="23">
+            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="18" color="#AAB5BB">GRID VOLTAGE</Font></Text>
+        </PartText>
+        <ComplicationSlot slotId="1" x="60" y="202" width="330" height="68" supportedTypes="SHORT_TEXT EMPTY" displayName="@string/voltage">
+            <DefaultProviderPolicy primaryProvider="com.anand.envoymonitor/com.anand.envoymonitor.wear.complications.VoltageProvider" primaryProviderType="SHORT_TEXT" defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT" />
+            <BoundingOval x="0" y="0" width="330" height="68" />
+            <Variant mode="AMBIENT" target="tintColor" value="#FFFFFF" />
+            <Complication type="SHORT_TEXT"><PartText x="0" y="0" width="330" height="68"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="50" color="#8DE8CC"><Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text></PartText></Complication>
+            <Complication type="EMPTY"><PartText x="0" y="0" width="330" height="68"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="28" color="#FFC874">NO LIVE DATA</Font></Text></PartText></Complication>
+        </ComplicationSlot>
+        <PartText x="48" y="283" width="164" height="23"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="17" color="#AAB5BB">SOLAR</Font></Text></PartText>
+        <PartText x="238" y="283" width="164" height="23"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="17" color="#AAB5BB">INV DAY</Font></Text></PartText>
+        <ComplicationSlot slotId="2" x="48" y="307" width="164" height="45" supportedTypes="SHORT_TEXT EMPTY" displayName="@string/power">
+            <DefaultProviderPolicy primaryProvider="com.anand.envoymonitor/com.anand.envoymonitor.wear.complications.SolarPowerProvider" primaryProviderType="SHORT_TEXT" defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT" />
+            <BoundingOval x="0" y="0" width="164" height="45" />
+            <Variant mode="AMBIENT" target="tintColor" value="#FFFFFF" />
+            <Complication type="SHORT_TEXT"><PartText x="0" y="0" width="164" height="45"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="28" color="#FFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text></PartText></Complication>
+            <Complication type="EMPTY"><PartText x="0" y="0" width="164" height="45"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="28" color="#AAB5BB">—</Font></Text></PartText></Complication>
+        </ComplicationSlot>
+        <ComplicationSlot slotId="3" x="238" y="307" width="164" height="45" supportedTypes="SHORT_TEXT EMPTY" displayName="@string/day_energy">
+            <DefaultProviderPolicy primaryProvider="com.anand.envoymonitor/com.anand.envoymonitor.wear.complications.DayEnergyProvider" primaryProviderType="SHORT_TEXT" defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT" />
+            <BoundingOval x="0" y="0" width="164" height="45" />
+            <Variant mode="AMBIENT" target="tintColor" value="#FFFFFF" />
+            <Complication type="SHORT_TEXT"><PartText x="0" y="0" width="164" height="45"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="28" color="#FFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text></PartText></Complication>
+            <Complication type="EMPTY"><PartText x="0" y="0" width="164" height="45"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="28" color="#AAB5BB">—</Font></Text></PartText></Complication>
+        </ComplicationSlot>
+        <ComplicationSlot slotId="4" x="65" y="363" width="320" height="34" supportedTypes="LONG_TEXT EMPTY" displayName="@string/status">
+            <DefaultProviderPolicy primaryProvider="com.anand.envoymonitor/com.anand.envoymonitor.wear.complications.StatusProvider" primaryProviderType="LONG_TEXT" defaultSystemProvider="EMPTY" defaultSystemProviderType="LONG_TEXT" />
+            <BoundingOval x="0" y="0" width="320" height="34" />
+            <Complication type="LONG_TEXT"><PartText x="0" y="0" width="320" height="34"><Text align="CENTER" ellipsis="TRUE" maxLines="1"><Font family="SYNC_TO_DEVICE" size="19" color="#AAB5BB"><Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text></PartText></Complication>
+            <Complication type="EMPTY"><PartText x="0" y="0" width="320" height="34"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="18" color="#FFC874">OPEN APP TO REFRESH</Font></Text></PartText></Complication>
+        </ComplicationSlot>
+        <PartText x="130" y="403" width="190" height="25"><Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="#AAB5BB"><Template>BAT %s%%<Parameter expression="[BATTERY_PERCENT]" /></Template></Font></Text></PartText>
+    </Scene>
+</WatchFace>
