@@ -17,8 +17,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -41,11 +43,15 @@ import androidx.core.content.ContextCompat
 import com.anand.envoymonitor.MonitorApplication
 import com.anand.envoymonitor.data.*
 import com.anand.envoymonitor.monitor.*
+import com.anand.envoymonitor.network.GatewayFailure
 import com.anand.envoymonitor.network.PairingCandidate
+import com.anand.envoymonitor.network.findGateways
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,7 +61,6 @@ private val Teal: Color @Composable get() = MaterialTheme.colorScheme.primary
 private val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val Paper: Color @Composable get() = MaterialTheme.colorScheme.background
 private val Amber: Color @Composable get() = LocalMonitorAccents.current.warningText
-// Keep the provisioning UI available for a later fix without exposing a setup flow that currently fails.
 private fun number(value: Double?, digits: Int = 1) = value?.let { "% .${digits}f".format(it).trim() } ?: "—"
 private fun date(timestamp: Long, pattern: String = "dd MMM · HH:mm") = if (timestamp <= 0) "No report" else
     DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.systemDefault()).format(Instant.ofEpochSecond(timestamp))
@@ -338,41 +343,14 @@ private fun showExportDateTimePicker(context: android.content.Context, initial: 
     DisposableEffect(Unit) { activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         onDispose { activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) } }
     val scope = rememberCoroutineScope()
-    var host by remember { mutableStateOf(config.host) }
-    var serial by remember { mutableStateOf(config.serial) }
     var low by remember(config.lowVoltage) { mutableStateOf(config.lowVoltage?.toString().orEmpty()) }
     var high by remember(config.highVoltage) { mutableStateOf(config.highVoltage?.toString().orEmpty()) }
-    var candidate by remember { mutableStateOf<PairingCandidate?>(null) }
-    var busy by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val messages = { message: String -> scope.launch { snack.showSnackbar(message) }; Unit }
-    candidate?.let { c ->
-        AlertDialog(onDismissRequest = { candidate = null }, title = { Text("Pair this gateway?") },
-            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Serial ${c.serial}\nFirmware ${c.firmware}\nAddress ${c.host}")
-                Text("SHA-256 certificate fingerprint", fontWeight = FontWeight.SemiBold)
-                Text(c.fingerprint.chunked(2).joinToString(":"), style = MaterialTheme.typography.bodySmall)
-                Text("Confirm this is your home gateway. The app will trust this certificate only at this address. No token has been sent.")
-            } }, confirmButton = { TextButton(onClick = {
-                app.settings.pair(c.host, c.serial, c.fingerprint); app.repository.configurationChanged()
-                candidate = null; messages("Gateway paired. Save your owner token next.")
-            }) { Text("Pair gateway") } }, dismissButton = { TextButton(onClick = { candidate = null }) { Text("Cancel") } })
-    }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { AppearanceSettings(app) }
         item { RefreshIntervalSettings(app) }
-        item { SurfaceCard {
-            Section("1 · Pair your gateway", "Connect to your home Wi-Fi. Inspecting shows the gateway identity and certificate fingerprint before you choose to trust it.")
-            OutlinedTextField(value = host, onValueChange = { host = it }, label = { Text("Local IPv4 address") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = serial, onValueChange = { serial = it }, label = { Text("Gateway serial") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            if (config.paired) Text("Paired with ${config.serial} at ${config.host}", color = Muted, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = { scope.launch {
-                busy = true
-                try { candidate = withContext(Dispatchers.IO) { app.client.inspect(host.trim(), serial.trim()) } }
-                catch (e: Exception) { messages(if (e is IllegalArgumentException) e.message ?: "Check the address and serial." else "Could not identify the gateway. Check Wi-Fi, address and serial.") }
-                busy = false
-            } }, enabled = !busy) { Text(if (busy) "Checking…" else if (config.paired) "Inspect / re-pair" else "Inspect gateway") }
-        } }
+        item { GatewayPairingCard(app, config, messages) }
         item { OwnerTokenCard(app) }
         item { SurfaceCard {
             Section("3 · Voltage warnings", "Alerts use fresh grid-meter voltage. Set your own low and high limits; warnings stay off until you save valid limits.")
@@ -399,6 +377,130 @@ private fun showExportDateTimePicker(context: android.content.Context, initial: 
             }
         } }
     }
+}
+
+@Composable private fun GatewayPairingCard(app: MonitorApplication, config: ConnectionSettings, messages: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var host by rememberSaveable(config.host) { mutableStateOf(config.host) }
+    var serial by rememberSaveable(config.serial) { mutableStateOf(config.serial) }
+    var candidate by remember { mutableStateOf<PairingCandidate?>(null) }
+    var choices by remember { mutableStateOf(emptyList<PairingCandidate>()) }
+    var progress by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    var showAddressHelp by rememberSaveable { mutableStateOf(false) }
+
+    fun review(found: PairingCandidate) {
+        choices = emptyList()
+        host = found.host
+        serial = found.serial
+        candidate = found
+    }
+
+    fun lookup(label: String, search: suspend () -> List<PairingCandidate>) {
+        if (progress != null) return
+        progress = label
+        notice = null
+        scope.launch {
+            try {
+                val found = search()
+                when (found.size) {
+                    0 -> notice = "No gateway found automatically. Tap Help finding the address below."
+                    1 -> review(found.single())
+                    else -> choices = found
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: GatewayFailure) {
+                notice = e.message
+            } catch (e: IllegalArgumentException) {
+                notice = e.message
+            } catch (_: IOException) {
+                notice = "Could not reach the gateway. Check the address and connect to your home Wi-Fi."
+            } catch (_: SecurityException) {
+                notice = "Local discovery is unavailable. Try entering the gateway address."
+            } finally {
+                progress = null
+            }
+        }
+    }
+
+    if (showAddressHelp) GatewayAddressHelp { showAddressHelp = false }
+
+    if (choices.isNotEmpty()) {
+        AlertDialog(onDismissRequest = { choices = emptyList() }, title = { Text("Choose your gateway") },
+            text = {
+                Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
+                    choices.forEach { found ->
+                        TextButton(onClick = { review(found) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Serial ${found.serial}\n${found.host}")
+                        }
+                    }
+                }
+            }, confirmButton = { TextButton(onClick = { choices = emptyList() }) { Text("Cancel") } })
+    }
+
+    candidate?.let { found ->
+        val alreadyPaired = found.host == config.host && found.serial == config.serial && found.fingerprint == config.fingerprint
+        AlertDialog(onDismissRequest = { candidate = null }, title = {
+            Text(if (alreadyPaired) "Gateway already paired" else "Pair this gateway?")
+        }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Serial ${found.serial}\nFirmware ${found.firmware}\nAddress ${found.host}")
+                Text("SHA-256 certificate fingerprint", fontWeight = FontWeight.SemiBold)
+                Text(found.fingerprint.chunked(2).joinToString(":"), style = MaterialTheme.typography.bodySmall)
+                if (!alreadyPaired) {
+                    Text("Compare the serial with the Enphase app or gateway label. Pair only if it matches your gateway.")
+                    if (config.paired) Text("Pairing again requires saving your owner token.")
+                }
+            }
+        }, confirmButton = {
+            TextButton(onClick = {
+                if (!alreadyPaired) {
+                    app.settings.pair(found.host, found.serial, found.fingerprint)
+                    app.repository.configurationChanged()
+                    messages("Gateway paired. Save your owner token next.")
+                }
+                candidate = null
+            }) { Text(if (alreadyPaired) "Done" else "Pair gateway") }
+        }, dismissButton = { TextButton(onClick = { candidate = null }) { Text("Cancel") } })
+    }
+
+    SurfaceCard {
+        Section("1 · Pair your gateway", "Connect to your home Wi-Fi. The app reads the gateway identity before you choose to trust it.")
+        if (config.paired) Text("Paired with ${config.serial} at ${config.host}", color = Muted, style = MaterialTheme.typography.bodySmall)
+        Button(onClick = {
+            lookup("Looking for your gateway…") { findGateways(app, app.client) }
+        }, enabled = progress == null, modifier = Modifier.fillMaxWidth()) { Text("Find my gateway") }
+        progress?.let {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(it, color = Muted, style = MaterialTheme.typography.bodySmall)
+        }
+        notice?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
+        OutlinedTextField(value = host, onValueChange = { host = it; notice = null }, enabled = progress == null,
+            label = { Text("Gateway IP address") }, placeholder = { Text("192.168.1.25") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), singleLine = true, modifier = Modifier.fillMaxWidth())
+        TextButton(onClick = { showAddressHelp = true }) { Text("Help finding the address") }
+        OutlinedTextField(value = serial, onValueChange = { serial = it; notice = null }, enabled = progress == null,
+            label = { Text("Gateway serial (optional)") }, supportingText = { Text("Leave blank to fill it in automatically.") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedButton(onClick = {
+            val enteredHost = host.trim()
+            val enteredSerial = serial.trim()
+            lookup("Reading gateway details…") { listOf(app.client.inspect(enteredHost, enteredSerial)) }
+        }, enabled = progress == null && host.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Check this address") }
+    }
+}
+
+@Composable private fun GatewayAddressHelp(close: () -> Unit) {
+    AlertDialog(onDismissRequest = close, title = { Text("Find the gateway address") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("1. Join your main home Wi-Fi. Open the app you use to manage your router or mesh Wi-Fi. Your internet provider may have a Wi-Fi management app.")
+                Text("2. Open Devices, Connected devices, or Clients. Look for Enphase, Envoy, or IQ Gateway in the Wi-Fi and wired devices lists.")
+                Text("3. Tap that device and copy its IP address or IPv4 address. It looks like 192.168.1.25. Paste it in Gateway IP address and tap Check this address. The app fills in the serial.")
+                Text("Compare the serial in the Enphase app under Menu → System → Devices → Gateway. If you can’t find the address, ask the person who manages your router or your solar installer for the gateway’s local IP address.")
+            }
+        }, confirmButton = { TextButton(onClick = close) { Text("Got it") } })
 }
 
 @Composable private fun ChoiceMenu(label: String, values: List<String>, selected: Int, choose: (Int) -> Unit) {

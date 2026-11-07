@@ -2,6 +2,8 @@
 
 Unofficial Android and Wear OS monitor for compatible Enphase IQ Gateway / Envoy systems and IQ microinverters. Android 10+; Kotlin, Compose, Room. This independent project is not affiliated with, endorsed by, or supported by Enphase Energy. Enphase, Envoy, IQ and Enlighten are their respective owner's marks. No backend, Enphase password collection, or gateway configuration writes.
 
+[**Download the Android APK**](https://github.com/anandstacked/unofficial-enphase-monitor/releases/latest/download/Unofficial-Enphase-Monitor.apk) · [Release notes and checksum](https://github.com/anandstacked/unofficial-enphase-monitor/releases/latest)
+
 ## Tested setup and compatibility
 
 Development and user testing have used **one installation**: an **Envoy-S-Metered-EU** gateway (**ENV-S-WM-230**) with **nine IQ8P microinverters** (**IQ8P-72-2-INT**). Gateway firmware was originally reported as **D8.2.4265**. The supplied meter configuration has one active phase, with production and net-consumption metering. These are model details, not a gateway serial or site identifier.
@@ -30,11 +32,10 @@ Version 1.1.3 fixes dark-mode inverter cards and adds **Save & test connection**
 
 ## Install and connect
 
-1. Open this folder in Android Studio and allow Gradle sync. This build uses SDK 35, Gradle 8.9 and Android Studio's bundled Java runtime.
-2. Enable USB debugging on your phone, connect a USB data cable, accept the debugging prompt on the phone, then Run the `app` configuration. Alternatively, after packaging, transfer `dist/latest/Unofficial-Enphase-Monitor.apk` to your phone and install it yourself.
-3. Connect the phone to home Wi-Fi. In Settings, enter your gateway's local IPv4 address and serial, then inspect it. Confirm the serial and certificate fingerprint before pairing. New installs intentionally have no prefilled gateway details.
-4. Sign in to Enlighten **in your own browser**. Obtain an owner token for your own gateway from Enphase's Entrez token page. Paste only the token value in the app and save it. Never commit tokens or passwords to this project.
-5. Choose **Save & test connection** after pasting the token. The check starts immediately, bypassing the refresh wait, and shows Connected, Authentication error, or Connection unavailable. **Test saved token** checks existing credentials. Tests have a 45-second total timeout, and normal collection resumes with the configured interval/backoff after completion. The Dashboard defaults to a 60-second delay between checks. If you want low/high voltage alerts, save your own thresholds and allow notifications. Thresholds are initially disabled.
+1. Download the APK above on your Android 10+ phone and open the downloaded file. Follow Android's installation prompts. The download is a signed debug build.
+2. Connect the phone to your main home Wi-Fi. In Settings, tap **Find my gateway** to discover it and fill in its IP address and serial. If discovery finds more than one gateway, choose yours by its serial. If discovery comes up empty, tap **Help finding the address** for a guide to your router app, then paste the IP and tap **Check this address**. You can leave the serial blank to read it from the gateway. Compare the displayed serial with the Enphase app or gateway label and review the certificate fingerprint before pairing.
+3. Sign in to Enlighten **in your own browser**. Obtain an owner token for your own gateway from Enphase's Entrez token page. Paste only the token value in the app and save it. Never commit tokens or passwords to this project.
+4. Choose **Save & test connection** after pasting the token. The check starts immediately, bypassing the refresh wait, and shows Connected, Authentication error, or Connection unavailable. **Test saved token** checks existing credentials. Tests have a 45-second total timeout, and normal collection resumes with the configured interval/backoff after completion. The Dashboard defaults to a 60-second delay between checks. If you want low/high voltage alerts, save your own thresholds and allow notifications. Thresholds are initially disabled.
 
 ## Token duration
 
@@ -65,7 +66,7 @@ For a short-lived token, use **Get owner token in browser**, sign in with the ac
 
 ## Security and compatibility
 
-Token-free pairing reads `/info` and checks the expected serial, then asks you to trust the presented SHA-256 leaf-certificate fingerprint. This is trust on first use: verify the device/network yourself. The token is sent only after pairing, only over HTTPS to the exact private IPv4 address, with the pinned certificate; redirects are disabled. A changed certificate requires re-pairing and a newly saved token. There is no global certificate-validation bypass for authenticated traffic.
+Discovery looks for the Enphase local network service and `envoy.local` on Wi-Fi. It checks private IPv4 candidates using `/info` without a token. When a serial is entered manually, the app checks it against the gateway response. Pairing requires confirmation of the gateway identity and its SHA-256 certificate fingerprint. The app sends the token only after pairing, over HTTPS to the saved private IPv4 address with the pinned certificate. Redirects are disabled. A changed certificate requires re-pairing and a newly saved token.
 
 Tokens are AES-GCM encrypted with a key in Android Keystore, excluded from backups, masked during entry and never logged. Settings screens block screenshots. The phone and watch apps target SDK 35; a future target-SDK upgrade must review Android's local-network permission requirements.
 
@@ -79,7 +80,7 @@ After building, run `./tools/Package-DebugBuild.ps1` in PowerShell. It verifies 
 - `Unofficial-Enphase-Wear.apk` — Wear OS companion.
 - `Unofficial-Enphase-Face.apk` — solar watch face.
 
-`dist/latest/build-info.json` records the packaged versions and hashes, with checksums also in `SHA256SUMS.txt`. These are debug builds. Run packaging again after each build to update these copies. Gradle's original `app/build/outputs/apk/debug/app-debug.apk` remains its standard build output. The ignored `dist/` folder is local; APKs are not included in the GitHub source repository.
+`dist/latest/build-info.json` records the packaged versions and hashes, with checksums also in `SHA256SUMS.txt`. Run packaging again after each build to update these debug builds. Gradle writes the original phone APK to `app/build/outputs/apk/debug/app-debug.apk`. The `dist/` folder is local and public phone APKs are available through GitHub Releases.
 
 Tests use synthetic device data (no access token or real gateway identifiers). They verify all nine devices, milli-unit/energy conversion, cached timestamps, single-phase channel selection, partially empty device records, matched-time home power and alert transitions.
 

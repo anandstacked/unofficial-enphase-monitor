@@ -8,7 +8,7 @@ Direct watch gateway provisioning is temporarily hidden in the phone Settings wh
 
 The versioned distributables are in `dist`. After running `tools/Package-DebugBuild.ps1`, `dist/latest/` also contains stable filenames: `Unofficial-Enphase-Monitor.apk`, `Unofficial-Enphase-Wear.apk`, and `Unofficial-Enphase-Face.apk`, with version details in `build-info.json`. Packaging must be run again after building to refresh these copies.
 
-- `Unofficial-Enphase-Monitor-1.1.14.apk`: update the **phone** app. Install over the existing app; do not uninstall it if you want to preserve history, settings and the encrypted owner token.
+- `Unofficial-Enphase-Monitor-1.1.15.apk`: update the **phone** app. Install over the existing app to preserve history, settings and the encrypted owner token.
 - `Unofficial-Enphase-Wear-1.1.1.apk`: install on the **watch**. It intentionally has the same application ID and signing certificate as the phone app so Google's Wear Data Layer can connect them.
 - `Unofficial-Enphase-Face-1.1.1.apk`: install on the **watch** as a separate face package. It contains resources only, without application code or gateway credentials.
 
